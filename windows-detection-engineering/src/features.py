@@ -30,9 +30,8 @@ def engineer_features(df, train_mask):
         feature dataframe
     """
     df = df.copy()
-    train = df[train_mask]
 
-    # ---- Temporal features (no leakage) ----
+    # ---- Step 1: Temporal features (no leakage, purely timestamp-based) ----
     df["hour"] = df["timestamp"].dt.hour
     df["day_of_week"] = df["timestamp"].dt.dayofweek
     df["is_weekend"] = (df["day_of_week"] >= 5).astype(int)
@@ -40,17 +39,20 @@ def engineer_features(df, train_mask):
         (df["hour"] >= 9) & (df["hour"] <= 17) & (df["is_weekend"] == 0)
     ).astype(int)
 
-    # ---- Event-based features ----
+    # ---- Step 2: Event-based features (no leakage, purely event_id-based) ----
     df["is_auth_event"] = df["event_id"].isin([4624, 4625, 4634, 4648]).astype(int)
     df["is_privileged_event"] = df["event_id"].isin([4672, 4673, 4720, 4732]).astype(int)
 
-    # ---- Text-based features ----
+    # ---- Step 3: Text-based features (no leakage, purely message-based) ----
     df["message_length"] = df["message"].str.len()
     df["word_count"] = df["message"].str.split().str.len()
 
-    # ---- Derived features from TRAINING data ONLY ----
-    # Suspicious event IDs: those that are rare among BENIGN training events
+    # ---- Step 4: Derived features from TRAINING data ONLY ----
+    # NOW we can use train_mask because hour/event_id columns exist
+    train = df[train_mask]
     train_benign = train[train["is_malicious"] == 0]
+
+    # Suspicious event IDs: those that are rare among BENIGN training events
     benign_event_counts = train_benign["event_id"].value_counts()
     # Event IDs appearing < 5% of the most common benign event are "rare"
     threshold = benign_event_counts.max() * 0.05
@@ -62,12 +64,17 @@ def engineer_features(df, train_mask):
     train_benign_hours = train_benign["hour"]
     hour_mean = train_benign_hours.mean()
     hour_std = train_benign_hours.std()
-    # "Unusual" = more than 2 std devs from mean
+
+    # Handle case where std is 0 (shouldn't happen, but safe)
+    if hour_std == 0:
+        hour_std = 1.0
+
     df["is_unusual_hour"] = (
         (df["hour"] < hour_mean - 2 * hour_std)
         | (df["hour"] > hour_mean + 2 * hour_std)
     ).astype(int)
 
+    # ---- Step 5: Select final feature columns ----
     feature_cols = [
         "hour",
         "day_of_week",
@@ -117,3 +124,4 @@ if __name__ == "__main__":
     print(f"Train attack rate: {y_train.mean():.4f}")
     print(f"Test attack rate:  {y_test.mean():.4f}")
     print(f"\nFeatures:\n{X_train.columns.tolist()}")
+    print(f"\nFeature sample:\n{X_train.head().to_string()}")
