@@ -1,0 +1,13 @@
+feature,importance
+is_auth_event,0.45360208
+event_id,0.105619326
+message_length,0.105459765
+word_count,0.09111995
+hour,0.07052009
+is_privileged_event,0.032725457
+is_unusual_hour,0.03246735
+day_of_week,0.031762168
+is_business_hours,0.031589203
+logon_type,0.031084234
+is_rare_event,0.014050329
+is_weekend,0.0
