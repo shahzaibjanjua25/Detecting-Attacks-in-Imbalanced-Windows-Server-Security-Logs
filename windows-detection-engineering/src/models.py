@@ -116,7 +116,7 @@ def main():
         scale_pos_weight=scale_pos_weight,
         random_state=SEED,
         eval_metric="logloss",
-        use_label_encoder=False,
+        
     )
     xgb.fit(X_train, y_train)
     y_pred = xgb.predict(X_test)
