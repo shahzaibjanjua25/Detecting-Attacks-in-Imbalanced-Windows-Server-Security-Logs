@@ -295,9 +295,15 @@ def inject_label_noise(df, noise_rate=LABEL_NOISE_RATE):
     """
     n_noise = int(len(df) * noise_rate)
     noise_idx = np.random.choice(df.index, size=n_noise, replace=False)
+
+    # Flip labels
     df.loc[noise_idx, "is_malicious"] = 1 - df.loc[noise_idx, "is_malicious"]
-    # Also flip attack_type to keep consistency
-    df.loc[noise_idx & (df["is_malicious"] == 1), "attack_type"] = "Benign"
+
+    # Fix attack_type consistency: any noisy row now labeled benign
+    # should have attack_type set to "Benign"
+    mask = df.index.isin(noise_idx) & (df["is_malicious"] == 0)
+    df.loc[mask, "attack_type"] = "Benign"
+
     return df
 
 
